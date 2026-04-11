@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
-import type { UserStatus } from "@/types/database";
+import type { UserStatus } from "@/types";
 
 interface UserStatusState {
   status: UserStatus | null;
