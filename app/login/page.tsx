@@ -12,7 +12,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (user && profile?.role === "admin") router.replace("/admin");
+    if (user && profile?.is_admin) router.replace("/admin");
     else if (user) router.replace("/dashboard");
   }, [user, profile, isLoading, router]);
 
@@ -27,7 +27,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">AuthManagerPro</h1>
-          <p className="text-gray-500 mt-2">Inicia sesión en tu cuenta</p>
+          <p className="text-gray-500 mt-2">Iniciá sesión en tu cuenta</p>
         </div>
         <LoginForm />
         <p className="text-center text-sm text-gray-500 mt-4">
