@@ -12,7 +12,7 @@ export async function createServerSupabaseClient() {
         async get(name: string) {
           return cookieStore.get(name)?.value;
         },
-        async set(name: string, value: string, options) {
+        async set(name: string, value: string, options: Record<string, unknown>) {
           try {
             cookieStore.set({ name, value, ...options });
           } catch (error) {
@@ -21,7 +21,7 @@ export async function createServerSupabaseClient() {
             // user sessions.
           }
         },
-        async remove(name: string, options) {
+        async remove(name: string, options: Record<string, unknown>) {
           try {
             cookieStore.set({ name, value: "", ...options });
           } catch (error) {
