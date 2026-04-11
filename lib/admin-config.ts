@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export interface AdminConfigData {
   adminEmail: string;
@@ -29,7 +29,7 @@ const DEFAULT_CONFIG: AdminConfigData = {
 
 export async function getAdminConfig(): Promise<AdminConfigData> {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await getSupabaseClient();
     const { data, error } = await supabase
       .from("admin_config")
       .select("key, value")
@@ -63,7 +63,7 @@ export async function updateAdminConfig(
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await getSupabaseClient();
 
     const { error: upsertError } = await supabase
       .from("admin_config")
@@ -99,7 +99,7 @@ export async function bulkUpdateAdminConfig(
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await getSupabaseClient();
 
     const records = Object.entries(updates).map(([key, value]) => ({
       key,
