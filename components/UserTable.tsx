@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import type { UserProfile } from "@/types";
+import type { Profile } from "@/types";
 
 interface UserTableProps {
-  users: UserProfile[];
+  users: Profile[];
   isLoading?: boolean;
   onUserSelect?: (userId: string) => void;
   onApprove?: (userId: string) => void;
