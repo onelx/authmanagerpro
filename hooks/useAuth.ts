@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
-import type { Profile } from "@/types/database";
+import type { Profile } from "@/types";
 
 interface AuthState {
   user: User | null;
