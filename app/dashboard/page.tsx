@@ -25,7 +25,7 @@ export default function DashboardPage() {
   );
 
   if (status === "pending") {
-    return <PendingApprovalCard user={user} profile={profile} />;
+    return <PendingApprovalCard email={user.email ?? ""} onLogout={signOut} />;
   }
 
   return (
