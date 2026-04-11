@@ -25,9 +25,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name as keyof FormErrors]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
-    }
+    setErrors((prev) => ({ ...prev, [name]: undefined, general: undefined }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -41,30 +39,43 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
     setErrors({});
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      const supabase = getSupabaseClient();
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
       });
 
-      const data = await response.json();
+      if (error) throw new Error(error.message);
+      if (!data.user) throw new Error("Error al autenticar");
 
-      if (!response.ok) {
-        throw new Error(data.error || "Credenciales inválidas");
+      // Obtener perfil para verificar estado y rol
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("status, is_admin")
+        .eq("id", data.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        throw new Error("Error al obtener perfil");
       }
 
-      // Establecer sesión en el cliente browser para que useAuth la detecte
-      if (data.session) {
-        const supabase = getSupabaseClient();
-        await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        });
+      if (profile.status === "pending_verification") {
+        await supabase.auth.signOut();
+        throw new Error("Por favor verificá tu email antes de iniciar sesión");
+      }
+      if (profile.status === "pending_approval") {
+        await supabase.auth.signOut();
+        throw new Error("Tu cuenta está pendiente de aprobación");
+      }
+      if (profile.status === "rejected") {
+        await supabase.auth.signOut();
+        throw new Error("Tu cuenta fue rechazada");
       }
 
-      if (onSuccess) onSuccess({ email: formData.email, status: data.user?.status });
+      if (onSuccess) onSuccess({ email: formData.email, status: profile.status });
 
-      window.location.href = data.user?.isAdmin ? "/admin" : "/dashboard";
+      window.location.href = profile.is_admin ? "/admin" : "/dashboard";
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Error al iniciar sesión";
       setErrors({ general: msg });
