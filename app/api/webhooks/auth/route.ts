@@ -1,93 +1,62 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
-import { sendEmail } from '@/lib/email'
-import { logAudit } from '@/lib/audit-log'
+import { NextRequest, NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
+import { sendEmail } from "@/lib/email"
+import { logAudit } from "@/lib/audit-log"
+
+function getDb() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { type, record } = body
 
-    // Verificar que sea un evento de email confirmado
-    if (type !== 'INSERT' || !record || record.email_confirmed_at === null) {
+    if (type !== "INSERT" || !record || record.email_confirmed_at === null) {
       return NextResponse.json({ received: true })
     }
 
     const userId = record.id
     const userEmail = record.email
+    const db = getDb()
 
-    const supabase = getSupabaseClient()
-
-    // Actualizar status a pending_approval
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ 
-        status: 'pending_approval',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', userId)
+    const { error: updateError } = await (db
+      .from("profiles")
+      .update({ status: "pending_approval", updated_at: new Date().toISOString() } as any)
+      .eq("id", userId) as any)
 
     if (updateError) {
-      console.error('Error actualizando perfil:', updateError)
-      return NextResponse.json(
-        { error: 'Error al actualizar perfil' },
-        { status: 500 }
-      )
+      console.error("Error actualizando perfil:", updateError)
+      return NextResponse.json({ error: "Error al actualizar perfil" }, { status: 500 })
     }
 
-    // Log de auditoría
-    await logAudit({
-      action: 'email_verified',
-      targetId: userId,
-      metadata: { email: userEmail }
-    })
+    await logAudit({ action: "email_verified", targetId: userId, metadata: { email: userEmail } })
 
-    // Obtener email del admin desde configuración
     const adminEmail = await getAdminEmail()
-
-    // Enviar notificación al admin
     if (adminEmail) {
       await sendEmail({
         to: adminEmail,
-        subject: 'Nuevo usuario pendiente de aprobación',
-        html: `
-          <h2>Nuevo usuario registrado</h2>
-          <p>Un usuario ha verificado su email y está pendiente de aprobación:</p>
-          <ul>
-            <li><strong>Email:</strong> ${userEmail}</li>
-            <li><strong>ID:</strong> ${userId}</li>
-          </ul>
-          <p>Por favor ingresa al panel de administración para aprobar o rechazar este usuario.</p>
-        `
+        subject: "Nuevo usuario pendiente de aprobación",
+        html: `<h2>Nuevo usuario registrado</h2><p>Email: ${userEmail}</p><p>ID: ${userId}</p>`
       })
     }
 
-    return NextResponse.json({ 
-      success: true,
-      message: 'Usuario actualizado a pending_approval'
-    })
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error en webhook:', error)
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    )
+    console.error("Error en webhook:", error)
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
 
 async function getAdminEmail(): Promise<string | null> {
   try {
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase
-      .from('admin_config')
-      .select('value')
-      .eq('key', 'admin_email')
-      .single()
-
-    if (error || !data) return null
-    return data.value?.email || null
-  } catch (error) {
-    console.error('Error obteniendo email admin:', error)
+    const db = getDb()
+    const { data } = await db.from("admin_config").select("value").eq("key", "admin_email").single()
+    return (data as any)?.value?.email || null
+  } catch {
     return null
   }
 }
