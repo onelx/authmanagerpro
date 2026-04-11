@@ -49,12 +49,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
       if (error) throw new Error(error.message);
       if (!data.user) throw new Error("Error al autenticar");
 
-      // Obtener perfil para verificar estado y rol
-      const { data: profile, error: profileError } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("status, is_admin")
         .eq("id", data.user.id)
         .single();
+
+      const profile = profileData as { status: string; is_admin: boolean } | null;
 
       if (profileError || !profile) {
         throw new Error("Error al obtener perfil");
