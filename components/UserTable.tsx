@@ -253,7 +253,7 @@ const UserTable: React.FC<UserTableProps> = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end gap-2">
-                      {user.status === "pending_approval" && (
+                      {(user.status === "pending_approval" || user.status === "pending_verification") && (
                         <>
                           <button
                             onClick={(e) => {
