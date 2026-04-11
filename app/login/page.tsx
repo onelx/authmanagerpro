@@ -10,18 +10,14 @@ export default function LoginPage() {
   const { user, profile, isLoading } = useAuth();
   const router = useRouter();
 
+  // Si ya está logueado, redirigir
   useEffect(() => {
     if (isLoading) return;
     if (user && profile?.is_admin) router.replace("/admin");
     else if (user) router.replace("/dashboard");
   }, [user, profile, isLoading, router]);
 
-  if (isLoading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-    </div>
-  );
-
+  // Siempre mostrar el formulario — no bloquear en loading
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md">
