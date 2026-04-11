@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { UserTable } from "@/components/UserTable";
+import { getSupabaseClient } from "@/lib/supabase";
 import type { Profile } from "@/types";
 
 export default function AdminPage() {
@@ -22,10 +23,16 @@ export default function AdminPage() {
   const fetchUsers = useCallback(async () => {
     try {
       setUsersLoading(true);
-      const res = await fetch("/api/admin/users");
+      const supabase = getSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const res = await fetch("/api/admin/users", {
+        headers: token ? { Authorization: "Bearer " + token } : {},
+      });
       if (!res.ok) throw new Error("Error al obtener usuarios");
       const data = await res.json();
-      setUsers(data.users ?? data ?? []);
+      setUsers(data.users ?? []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -38,21 +45,25 @@ export default function AdminPage() {
   }, [user, profile, fetchUsers]);
 
   const handleApprove = async (userId: string) => {
-    try {
-      await fetch(`/api/admin/users/${userId}/approve`, { method: "POST" });
-      await fetchUsers();
-    } catch (err) {
-      console.error("Error al aprobar:", err);
-    }
+    const supabase = getSupabaseClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    await fetch(`/api/admin/users/${userId}/approve`, {
+      method: "POST",
+      headers: token ? { Authorization: "Bearer " + token } : {},
+    });
+    await fetchUsers();
   };
 
   const handleReject = async (userId: string) => {
-    try {
-      await fetch(`/api/admin/users/${userId}/reject`, { method: "POST" });
-      await fetchUsers();
-    } catch (err) {
-      console.error("Error al rechazar:", err);
-    }
+    const supabase = getSupabaseClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    await fetch(`/api/admin/users/${userId}/reject`, {
+      method: "POST",
+      headers: token ? { Authorization: "Bearer " + token } : {},
+    });
+    await fetchUsers();
   };
 
   if (isLoading || !user) return (
@@ -73,12 +84,7 @@ export default function AdminPage() {
         </div>
       </header>
       <main className="max-w-6xl mx-auto p-6">
-        <UserTable
-          users={users}
-          isLoading={usersLoading}
-          onApprove={handleApprove}
-          onReject={handleReject}
-        />
+        <UserTable users={users} isLoading={usersLoading} onApprove={handleApprove} onReject={handleReject} />
       </main>
     </div>
   );
