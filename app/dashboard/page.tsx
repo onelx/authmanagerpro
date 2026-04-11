@@ -15,7 +15,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (isLoading) return;
     if (!user) router.replace("/login");
-    else if (profile?.role === "admin") router.replace("/admin");
+    else if (profile?.is_admin) router.replace("/admin");
   }, [user, profile, isLoading, router]);
 
   if (isLoading || !user) return (
@@ -24,7 +24,7 @@ export default function DashboardPage() {
     </div>
   );
 
-  if (status === "pending") {
+  if (status === "pending_approval" || status === "pending_verification") {
     return <PendingApprovalCard email={user.email ?? ""} onLogout={signOut} />;
   }
 
@@ -48,7 +48,7 @@ export default function DashboardPage() {
             Bienvenido, {profile?.full_name || "usuario"}
           </h2>
           <p className="text-gray-500 text-sm">
-            Tu cuenta está activa. Estado: <span className="font-medium text-green-600">{status}</span>
+            Tu cuenta está activa.
           </p>
         </div>
       </main>
