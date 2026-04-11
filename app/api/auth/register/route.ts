@@ -16,60 +16,29 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabaseClient()
 
     // Registrar usuario en Supabase Auth
+    // El perfil se crea automáticamente via trigger on_auth_user_created
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: {
-          full_name: fullName,
-        },
+        data: { full_name: fullName },
       },
     })
 
     if (authError) {
-      return NextResponse.json(
-        { error: authError.message },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: authError.message }, { status: 400 })
     }
 
     if (!authData.user) {
-      return NextResponse.json(
-        { error: 'Error al crear usuario' },
-        { status: 500 }
-      )
-    }
-
-    // Crear perfil con status 'pending_verification'
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        id: authData.user.id,
-        email: email,
-        full_name: fullName,
-        status: 'pending_verification',
-        is_admin: false,
-      })
-
-    if (profileError) {
-      return NextResponse.json(
-        { error: 'Error al crear perfil: ' + profileError.message },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Error al crear usuario' }, { status: 500 })
     }
 
     return NextResponse.json({
       message: 'Usuario registrado. Por favor verifica tu email.',
-      user: {
-        id: authData.user.id,
-        email: authData.user.email,
-      },
+      user: { id: authData.user.id, email: authData.user.email },
     })
   } catch (error) {
     console.error('Error en registro:', error)
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }
