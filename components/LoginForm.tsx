@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "./ui/card";
@@ -18,6 +19,7 @@ interface FormErrors {
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
+  const router = useRouter();
   const [formData, setFormData] = React.useState({ email: "", password: "" });
   const [errors, setErrors] = React.useState<FormErrors>({});
   const [isLoading, setIsLoading] = React.useState(false);
@@ -58,7 +60,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
       const profile = profileData as { status: string; is_admin: boolean } | null;
 
       if (profileError || !profile) {
-        throw new Error("Error al obtener perfil");
+        throw new Error("Error al obtener perfil: " + (profileError?.message ?? "no encontrado"));
       }
 
       if (profile.status === "pending_verification") {
@@ -76,12 +78,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
 
       if (onSuccess) onSuccess({ email: formData.email, status: profile.status });
 
-      window.location.href = profile.is_admin ? "/admin" : "/dashboard";
+      // Client-side navigation — mantiene la sesión en memoria sin reload
+      router.push(profile.is_admin ? "/admin" : "/dashboard");
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Error al iniciar sesión";
       setErrors({ general: msg });
       if (onError) onError(msg);
-    } finally {
       setIsLoading(false);
     }
   };
