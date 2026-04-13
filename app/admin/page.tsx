@@ -105,6 +105,13 @@ export default function AdminPage() {
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Panel de Administración</h1>
         <div className="flex items-center gap-4">
+          <a
+            href="/admin/monitor"
+            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 font-medium px-3 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+          >
+            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            Monitor
+          </a>
           <span className="text-sm text-gray-500">{profile?.full_name || user.email}</span>
           <button onClick={signOut} className="text-sm text-red-600 hover:underline">
             Cerrar sesión

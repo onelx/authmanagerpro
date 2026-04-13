@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,16 +13,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = getSupabaseClient()
+    // Usar anon key para el signup
+    const anonDb = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } }
+    )
 
-    // Registrar usuario en Supabase Auth
-    // El perfil se crea automáticamente via trigger on_auth_user_created
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    const { data: authData, error: authError } = await anonDb.auth.signUp({
       email,
       password,
-      options: {
-        data: { full_name: fullName },
-      },
+      options: { data: { full_name: fullName } },
     })
 
     if (authError) {
@@ -32,6 +33,20 @@ export async function POST(request: NextRequest) {
     if (!authData.user) {
       return NextResponse.json({ error: 'Error al crear usuario' }, { status: 500 })
     }
+
+    // Audit log con service role
+    const adminDb = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } }
+    )
+
+    await adminDb.from('audit_log').insert({
+      action: 'user_registered',
+      actor_id: null,
+      target_id: authData.user.id,
+      metadata: { email, fullName },
+    })
 
     return NextResponse.json({
       message: 'Usuario registrado. Por favor verifica tu email.',
