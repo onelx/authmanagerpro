@@ -10,14 +10,12 @@ export default function LoginPage() {
   const { user, profile, isLoading } = useAuth();
   const router = useRouter();
 
-  // Si ya está logueado, redirigir
   useEffect(() => {
     if (isLoading) return;
     if (user && profile?.is_admin) router.replace("/admin");
     else if (user) router.replace("/dashboard");
   }, [user, profile, isLoading, router]);
 
-  // Siempre mostrar el formulario — no bloquear en loading
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md">
@@ -26,12 +24,6 @@ export default function LoginPage() {
           <p className="text-gray-500 mt-2">Iniciá sesión en tu cuenta</p>
         </div>
         <LoginForm />
-        <p className="text-center text-sm text-gray-500 mt-4">
-          ¿No tenés cuenta?{" "}
-          <a href="/register" className="text-blue-600 hover:underline font-medium">
-            Registrate
-          </a>
-        </p>
       </div>
     </div>
   );
