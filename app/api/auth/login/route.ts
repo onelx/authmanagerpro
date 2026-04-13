@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+async function auditLog(adminDb: ReturnType<typeof createClient>, action: string, actorId: string | null, targetId: string | null, metadata: object) {
+  try {
+    await adminDb.from('audit_log').insert({ action, actor_id: actorId, target_id: targetId, metadata })
+  } catch { /* no-op */ }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
@@ -14,22 +20,16 @@ export async function POST(request: NextRequest) {
       { auth: { persistSession: false, autoRefreshToken: false } }
     )
 
-    const { data: authData, error: authError } = await db.auth.signInWithPassword({ email, password })
-
     const adminDb = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { persistSession: false, autoRefreshToken: false } }
     )
 
+    const { data: authData, error: authError } = await db.auth.signInWithPassword({ email, password })
+
     if (authError || !authData.user) {
-      // Log failed attempt
-      await adminDb.from('audit_log').insert({
-        action: 'login_failed',
-        actor_id: null,
-        target_id: null,
-        metadata: { email, reason: authError?.message ?? 'unknown' },
-      }).catch(() => {})
+      await auditLog(adminDb, 'login_failed', null, null, { email, reason: authError?.message ?? 'unknown' })
       return NextResponse.json({ error: authError?.message ?? 'Error al autenticar' }, { status: 401 })
     }
 
@@ -56,13 +56,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tu cuenta está suspendida. Contactá al administrador.', status: 'suspended' }, { status: 403 })
     }
 
-    // Log successful login
-    await adminDb.from('audit_log').insert({
-      action: 'login_success',
-      actor_id: authData.user.id,
-      target_id: authData.user.id,
-      metadata: { email },
-    }).catch(() => {})
+    await auditLog(adminDb, 'login_success', authData.user.id, authData.user.id, { email })
 
     return NextResponse.json({
       message: 'Login exitoso',
