@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { User } from "@supabase/supabase-js";
-import { getSupabaseClient } from "@/lib/supabase";
-import type { Profile } from "@/types";
+import { useEffect, useState, useCallback } from "react";
+
+interface AuthUser {
+  id: string;
+  email: string;
+  fullName?: string;
+  status: string;
+  isAdmin: boolean;
+}
 
 interface AuthState {
-  user: User | null;
-  profile: Profile | null;
+  user: AuthUser | null;
+  profile: { is_admin: boolean; full_name: string | null; status: string } | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -19,158 +24,77 @@ interface UseAuthReturn extends AuthState {
 
 export function useAuth(): UseAuthReturn {
   const [state, setState] = useState<AuthState>({
-    user: null,
-    profile: null,
-    isLoading: true,
-    error: null,
+    user: null, profile: null, isLoading: true, error: null,
   });
 
-  const supabase = getSupabaseClient();
-
-  const fetchProfile = async (userId: string): Promise<Profile | null> => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      if (error) {
-        console.error("Error fetching profile:", error);
-        return null;
-      }
-
-      return data as Profile;
-    } catch (err) {
-      console.error("Exception fetching profile:", err);
-      return null;
-    }
+  const getToken = () => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("auth_access_token");
   };
 
-  const refreshProfile = async (): Promise<void> => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      const profile = await fetchProfile(user.id);
-      setState((prev) => ({
-        ...prev,
-        profile,
-        isLoading: false,
-        error: null,
-      }));
+  const fetchMe = useCallback(async () => {
+    const token = getToken();
+    if (!token) {
+      setState({ user: null, profile: null, isLoading: false, error: null });
+      return;
     }
-  };
-
-  const signOut = async (): Promise<void> => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        setState((prev) => ({
-          ...prev,
-          error: error.message,
-        }));
-        throw error;
+      const res = await fetch("/api/auth/me", {
+        headers: { Authorization: "Bearer " + token },
+      });
+      if (!res.ok) {
+        localStorage.removeItem("auth_access_token");
+        localStorage.removeItem("auth_refresh_token");
+        localStorage.removeItem("auth_user");
+        setState({ user: null, profile: null, isLoading: false, error: null });
+        return;
       }
-
+      const data = await res.json();
+      const u = data.user;
       setState({
-        user: null,
-        profile: null,
+        user: { id: u.id, email: u.email, fullName: u.fullName, status: u.status, isAdmin: u.isAdmin },
+        profile: { is_admin: u.isAdmin, full_name: u.fullName ?? null, status: u.status },
         isLoading: false,
         error: null,
       });
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Error al cerrar sesión";
-      setState((prev) => ({
-        ...prev,
-        error: errorMessage,
-      }));
-      throw err;
+    } catch {
+      setState({ user: null, profile: null, isLoading: false, error: "Error de conexión" });
     }
-  };
-
-  useEffect(() => {
-    let mounted = true;
-
-    const initializeAuth = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (user && mounted) {
-          const profile = await fetchProfile(user.id);
-          setState({
-            user,
-            profile,
-            isLoading: false,
-            error: null,
-          });
-        } else if (mounted) {
-          setState({
-            user: null,
-            profile: null,
-            isLoading: false,
-            error: null,
-          });
-        }
-      } catch (err) {
-        if (mounted) {
-          const errorMessage =
-            err instanceof Error ? err.message : "Error al inicializar auth";
-          setState({
-            user: null,
-            profile: null,
-            isLoading: false,
-            error: errorMessage,
-          });
-        }
-      }
-    };
-
-    initializeAuth();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-
-      if (event === "SIGNED_IN" && session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        setState({
-          user: session.user,
-          profile,
-          isLoading: false,
-          error: null,
-        });
-      } else if (event === "SIGNED_OUT") {
-        setState({
-          user: null,
-          profile: null,
-          isLoading: false,
-          error: null,
-        });
-      } else if (event === "USER_UPDATED" && session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        setState((prev) => ({
-          ...prev,
-          user: session.user,
-          profile,
-        }));
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
   }, []);
 
-  return {
-    ...state,
-    signOut,
-    refreshProfile,
+  useEffect(() => {
+    // Intentar leer del localStorage primero para respuesta inmediata
+    const cached = localStorage.getItem("auth_user");
+    if (cached) {
+      try {
+        const u = JSON.parse(cached);
+        setState({
+          user: { id: u.id, email: u.email, fullName: u.fullName, status: u.status, isAdmin: u.isAdmin },
+          profile: { is_admin: u.isAdmin, full_name: u.fullName ?? null, status: u.status },
+          isLoading: false,
+          error: null,
+        });
+      } catch { /* ignorar */ }
+    }
+    fetchMe();
+  }, [fetchMe]);
+
+  const signOut = async () => {
+    const token = getToken();
+    if (token) {
+      await fetch("/api/auth/logout", { method: "POST", headers: { Authorization: "Bearer " + token } }).catch(() => {});
+    }
+    localStorage.removeItem("auth_access_token");
+    localStorage.removeItem("auth_refresh_token");
+    localStorage.removeItem("auth_user");
+    setState({ user: null, profile: null, isLoading: false, error: null });
+    window.location.href = "/login";
   };
+
+  const refreshProfile = async () => {
+    setState(prev => ({ ...prev, isLoading: true }));
+    await fetchMe();
+  };
+
+  return { ...state, signOut, refreshProfile };
 }
