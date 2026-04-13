@@ -260,27 +260,32 @@ const UserTable: React.FC<UserTableProps> = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end gap-2">
-                      {(user.status === "pending_approval" || user.status === "pending_verification") && (
-                        <>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onApprove && onApprove(user.id);
-                            }}
-                            className="text-green-600 hover:text-green-900"
-                          >
-                            Aprobar
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onReject && onReject(user.id);
-                            }}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Rechazar
-                          </button>
-                        </>
+                      {/* Aprobar: pending, rejected, suspended */}
+                      {(user.status === "pending_approval" || user.status === "pending_verification" || user.status === "rejected" || user.status === "suspended") && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onApprove && onApprove(user.id); }}
+                          className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded hover:bg-green-200"
+                        >
+                          Aprobar
+                        </button>
+                      )}
+                      {/* Suspender: solo approved */}
+                      {user.status === "approved" && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onSuspend && onSuspend(user.id); }}
+                          className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-700 rounded hover:bg-orange-200"
+                        >
+                          Suspender
+                        </button>
+                      )}
+                      {/* Rechazar: pending, suspended */}
+                      {(user.status === "pending_approval" || user.status === "pending_verification" || user.status === "suspended") && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onReject && onReject(user.id); }}
+                          className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded hover:bg-red-200"
+                        >
+                          Rechazar
+                        </button>
                       )}
                     </div>
                   </td>
