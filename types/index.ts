@@ -2,7 +2,8 @@ export type UserStatus =
   | 'pending_verification' 
   | 'pending_approval' 
   | 'approved' 
-  | 'rejected';
+  | 'rejected'
+  | 'suspended';
 
 export interface Profile {
   id: string;
