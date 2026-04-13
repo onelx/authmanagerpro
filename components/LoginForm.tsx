@@ -78,12 +78,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
 
       if (onSuccess) onSuccess({ email: formData.email, status: profile.status });
 
-      // Client-side navigation — mantiene la sesión en memoria sin reload
       router.push(profile.is_admin ? "/admin" : "/dashboard");
+
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Error al iniciar sesión";
       setErrors({ general: msg });
       if (onError) onError(msg);
+    } finally {
       setIsLoading(false);
     }
   };
