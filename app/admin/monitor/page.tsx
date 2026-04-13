@@ -243,11 +243,11 @@ export default function MonitorPage() {
                         {log.actor_email && log.actor_email !== log.target_email && (
                           <span className="text-xs text-gray-600">por {log.actor_email}</span>
                         )}
-                        {log.action === 'login_failed' && log.metadata?.email && (
-                          <span className="text-xs text-red-400">{String(log.metadata.email)}</span>
+                        {log.action === 'login_failed' && typeof log.metadata?.email === 'string' && (
+                          <span className="text-xs text-red-400">{log.metadata.email}</span>
                         )}
-                        {log.action === 'user_rejected' && log.metadata?.reason && (
-                          <span className="text-xs text-gray-500 italic">&quot;{String(log.metadata.reason)}&quot;</span>
+                        {log.action === 'user_rejected' && typeof log.metadata?.reason === 'string' && (
+                          <span className="text-xs text-gray-500 italic">&quot;{log.metadata.reason}&quot;</span>
                         )}
                       </div>
                     </div>
