@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-async function auditLog(adminDb: ReturnType<typeof createClient>, action: string, actorId: string | null, targetId: string | null, metadata: object) {
+async function auditLog(adminDb: any, action: string, actorId: string | null, targetId: string | null, metadata: object) {
   try {
     await adminDb.from('audit_log').insert({ action, actor_id: actorId, target_id: targetId, metadata })
   } catch { /* no-op */ }
@@ -14,13 +14,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email y password son requeridos' }, { status: 400 })
     }
 
-    const db = createClient(
+    const db = createClient<any>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       { auth: { persistSession: false, autoRefreshToken: false } }
     )
 
-    const adminDb = createClient(
+    const adminDb = createClient<any>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { persistSession: false, autoRefreshToken: false } }

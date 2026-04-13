@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const token = authHeader?.replace("Bearer ", "")
     if (!token) return NextResponse.json({ error: "No autenticado" }, { status: 401 })
 
-    const db = createClient(
+    const db = createClient<any>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       { global: { headers: { Authorization: `Bearer ${token}` } } }

@@ -5,7 +5,7 @@ async function requireAdmin(request: NextRequest) {
   const token = request.headers.get('authorization')?.replace('Bearer ', '')
   if (!token) return null
 
-  const userDb = createClient(
+  const userDb = createClient<any>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { Authorization: `Bearer ${token}` } } }
@@ -14,7 +14,7 @@ async function requireAdmin(request: NextRequest) {
   const { data: { user } } = await userDb.auth.getUser()
   if (!user) return null
 
-  const adminDb = createClient(
+  const adminDb = createClient<any>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false, autoRefreshToken: false } }
