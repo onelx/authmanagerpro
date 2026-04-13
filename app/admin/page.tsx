@@ -16,8 +16,14 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (!user) router.replace("/login");
-    else if (!profile?.is_admin) router.replace("/dashboard");
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+    // Solo redirigir si profile ya cargó y NO es admin
+    if (profile !== null && !profile?.is_admin) {
+      router.replace("/dashboard");
+    }
   }, [user, profile, isLoading, router]);
 
   const fetchUsers = useCallback(async () => {
@@ -26,7 +32,6 @@ export default function AdminPage() {
       const supabase = getSupabaseClient();
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-
       const res = await fetch("/api/admin/users", {
         headers: token ? { Authorization: "Bearer " + token } : {},
       });
@@ -66,11 +71,14 @@ export default function AdminPage() {
     await fetchUsers();
   };
 
-  if (isLoading || !user) return (
+  // Mostrar spinner solo mientras carga auth
+  if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
     </div>
   );
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
