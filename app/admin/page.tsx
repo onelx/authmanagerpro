@@ -92,7 +92,7 @@ export default function AdminPage() {
         </div>
       </header>
       <main className="max-w-6xl mx-auto p-6">
-        <UserTable users={users} isLoading={usersLoading} onApprove={handleApprove} onReject={handleReject} />
+        <UserTable users={users} isLoading={usersLoading} onApprove={handleApprove} onReject={handleReject} onSuspend={handleSuspend} />
       </main>
     </div>
   );
