@@ -13,8 +13,6 @@ interface LoginFormProps {
 }
 
 interface FormErrors {
-  email?: string;
-  password?: string;
   general?: string;
 }
 
@@ -32,15 +30,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
   const [debugSteps, setDebugSteps] = React.useState<DebugStep[]>([]);
 
   const log = (msg: string, status: DebugStep["status"] = "info") => {
-    const time = new Date().toLocaleTimeString("es-AR", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const time = new Date().toLocaleTimeString("es-AR", { hour12: false });
     setDebugSteps(prev => [...prev, { time, status, msg }]);
-    console.log(`[${status}] ${msg}`);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: undefined, general: undefined }));
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setErrors({});
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -49,83 +46,55 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
       setErrors({ general: "Email y contraseña son requeridos" });
       return;
     }
-
     setIsLoading(true);
     setErrors({});
     setDebugSteps([]);
 
     try {
-      log("1. URL: " + (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "UNDEFINED"));
-      log("2. Iniciando signInWithPassword...");
-      const supabase = getSupabaseClient();
+      log("1. Llamando API /auth/login...");
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
       });
 
-      if (error) {
-        log("Auth error: " + error.message, "error");
-        throw new Error(error.message);
-      }
-      if (!data.user) {
-        log("No user returned", "error");
-        throw new Error("Error al autenticar");
-      }
+      const data = await res.json();
+      log("2. Respuesta: " + res.status + " " + JSON.stringify(data).slice(0, 80), res.ok ? "ok" : "error");
 
-      log("2. Auth OK — user: " + data.user.id.slice(0, 8) + "...", "ok");
-      log("3. Fetching profile...");
+      if (!res.ok) throw new Error(data.error || "Error al iniciar sesión");
 
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("status, is_admin")
-        .eq("id", data.user.id)
-        .single();
-
-      if (profileError) {
-        log("Profile error: " + profileError.message + " (code: " + profileError.code + ")", "error");
-        throw new Error("Error al obtener perfil: " + profileError.message);
+      if (data.session?.access_token) {
+        log("3. Seteando sesión en cliente...");
+        const supabase = getSupabaseClient();
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+        if (sessionError) {
+          log("Session error: " + sessionError.message, "error");
+        } else {
+          log("4. Sesión OK", "ok");
+        }
       }
 
-      const profile = profileData as { status: string; is_admin: boolean } | null;
+      const dest = data.user?.isAdmin ? "/admin" : "/dashboard";
+      log("5. Redirigiendo a " + dest, "ok");
 
-      if (!profile) {
-        log("Profile is null", "error");
-        throw new Error("Perfil no encontrado");
-      }
-
-      log("4. Profile OK — status: " + profile.status + ", is_admin: " + profile.is_admin, "ok");
-
-      if (profile.status === "pending_verification") {
-        await supabase.auth.signOut();
-        throw new Error("Por favor verificá tu email antes de iniciar sesión");
-      }
-      if (profile.status === "pending_approval") {
-        await supabase.auth.signOut();
-        throw new Error("Tu cuenta está pendiente de aprobación");
-      }
-      if (profile.status === "rejected") {
-        await supabase.auth.signOut();
-        throw new Error("Tu cuenta fue rechazada");
-      }
-
-      const dest = profile.is_admin ? "/admin" : "/dashboard";
-      log("5. Redirigiendo a " + dest + "...", "ok");
-
-      if (onSuccess) onSuccess({ email: formData.email, status: profile.status });
-
+      if (onSuccess) onSuccess({ email: formData.email, status: data.user?.status });
       router.push(dest);
 
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Error al iniciar sesión";
       setErrors({ general: msg });
+      log("Error: " + msg, "error");
       if (onError) onError(msg);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const statusColor = { ok: "#16a34a", error: "#dc2626", info: "#2563eb" };
+  const statusColor = { ok: "#86efac", error: "#f87171", info: "#93c5fd" };
   const statusIcon = { ok: "✓", error: "✗", info: "→" };
 
   return (
@@ -143,10 +112,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
               </div>
             )}
             <Input label="Email" type="email" name="email" placeholder="tu@email.com"
-              value={formData.email} onChange={handleInputChange} error={errors.email}
+              value={formData.email} onChange={handleInputChange}
               required disabled={isLoading} autoComplete="email" />
             <Input label="Contraseña" type="password" name="password" placeholder="••••••••"
-              value={formData.password} onChange={handleInputChange} error={errors.password}
+              value={formData.password} onChange={handleInputChange}
               required disabled={isLoading} autoComplete="current-password" />
           </CardContent>
           <CardFooter className="flex flex-col gap-2">
@@ -162,22 +131,15 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
       </Card>
 
       {debugSteps.length > 0 && (
-        <div style={{ marginTop: 16, padding: 12, background: "#0f172a", borderRadius: 8, fontFamily: "monospace", fontSize: 13 }}>
-          <div style={{ color: "#94a3b8", marginBottom: 8, fontSize: 11, textTransform: "uppercase", letterSpacing: 1 }}>
-            DEBUG LOG
-          </div>
+        <div style={{ marginTop: 16, padding: 12, background: "#0f172a", borderRadius: 8, fontFamily: "monospace", fontSize: 12 }}>
+          <div style={{ color: "#64748b", marginBottom: 8, fontSize: 11 }}>DEBUG LOG</div>
           {debugSteps.map((s, i) => (
-            <div key={i} style={{ display: "flex", gap: 8, marginBottom: 4, color: statusColor[s.status] }}>
-              <span style={{ color: "#475569", minWidth: 70 }}>{s.time}</span>
-              <span>{statusIcon[s.status]}</span>
-              <span style={{ color: s.status === "error" ? "#f87171" : s.status === "ok" ? "#86efac" : "#93c5fd" }}>
-                {s.msg}
-              </span>
+            <div key={i} style={{ display: "flex", gap: 8, marginBottom: 3 }}>
+              <span style={{ color: "#475569", minWidth: 65 }}>{s.time}</span>
+              <span style={{ color: statusColor[s.status] }}>{statusIcon[s.status]} {s.msg}</span>
             </div>
           ))}
-          {isLoading && (
-            <div style={{ color: "#fbbf24", marginTop: 4 }}>⏳ Esperando respuesta...</div>
-          )}
+          {isLoading && <div style={{ color: "#fbbf24", marginTop: 4 }}>⏳ Esperando...</div>}
         </div>
       )}
     </>
