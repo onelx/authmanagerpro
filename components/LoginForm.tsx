@@ -55,7 +55,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onError }) => {
     setDebugSteps([]);
 
     try {
-      log("1. Iniciando signInWithPassword...");
+      log("1. URL: " + (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "UNDEFINED"));
+      log("2. Iniciando signInWithPassword...");
       const supabase = getSupabaseClient();
 
       const { data, error } = await supabase.auth.signInWithPassword({
