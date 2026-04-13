@@ -9,9 +9,10 @@ interface UserTableProps {
   onUserSelect?: (userId: string) => void;
   onApprove?: (userId: string) => void;
   onReject?: (userId: string) => void;
+  onSuspend?: (userId: string) => void;
 }
 
-type StatusFilter = "all" | "pending_verification" | "pending_approval" | "approved" | "rejected";
+type StatusFilter = "all" | "pending_verification" | "pending_approval" | "approved" | "rejected" | "suspended";
 
 const UserTable: React.FC<UserTableProps> = ({
   users,
@@ -19,6 +20,7 @@ const UserTable: React.FC<UserTableProps> = ({
   onUserSelect,
   onApprove,
   onReject,
+  onSuspend,
 }) => {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>("all");
@@ -42,6 +44,10 @@ const UserTable: React.FC<UserTableProps> = ({
       rejected: {
         label: "Rechazado",
         className: "bg-red-100 text-red-800",
+      },
+      suspended: {
+        label: "Suspendido",
+        className: "bg-orange-100 text-orange-800",
       },
     };
 
@@ -171,6 +177,7 @@ const UserTable: React.FC<UserTableProps> = ({
               <option value="pending_approval">Aprobación pendiente</option>
               <option value="approved">Aprobados</option>
               <option value="rejected">Rechazados</option>
+              <option value="suspended">Suspendidos</option>
             </select>
           </div>
         </div>
